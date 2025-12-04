@@ -4,6 +4,7 @@ import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
 
 
+
 const router = express.Router(); // eslint-disable-line
 
 // Get all users
@@ -31,20 +32,49 @@ router.post('/', asyncHandler(async (req, res) => {
 }));
 
 async function registerUser(req, res) {
-  const { username, password } = req.body;
-
+  // Password validation regex
   const strongPasswordRegex =
     /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/;
 
-  if (!strongPasswordRegex.test(password)) {
+  const { username, password } = req.body;
+
+  // Basic input validation
+  if (!username || !password) {
     return res.status(400).json({
       success: false,
-      msg: 'Password must be at least 8 characters long and contain at least one letter, one digit, and one special character.',
+      msg: "Username and password are required."
     });
   }
 
-  await User.create({ username, password });
-  res.status(201).json({ success: true, msg: 'User successfully created.' });
+  // Strong password validation
+  if (!strongPasswordRegex.test(password)) {
+    return res.status(400).json({
+      success: false,
+      msg:
+        "Weak password. Min 8 chars, at least one letter, one number and one special character."
+    });
+  }
+
+  try {
+    await User.create({ username, password });
+    return res.status(201).json({
+      success: true,
+      msg: "User successfully created."
+    });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        msg: "Username already exists."
+      });
+    }
+
+    console.error(err);
+    return res.status(500).json({
+      success: false,
+      msg: "Internal server error."
+    });
+  }
 }
 
 
